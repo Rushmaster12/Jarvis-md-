@@ -10,7 +10,7 @@ Jarvis - Loki-Xer
 ------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
-const { System, isPrivate, extractUrlFromMessage, sleep, getJson, config, isUrl, IronMan, getBuffer, toAudio, terabox, instaDl, aptoideDl } = require("../lib/");
+const { System, isPrivate, extractUrlFromMessage, sleep, getJson, config, isUrl, IronMan, getBuffer, toAudio, terabox, instaDl, aptoideDl, tiktokDl } = require("../lib/");
 
 
 const fetchData = async (mediafireUrl) => {
@@ -275,15 +275,25 @@ System({
 System({
   pattern: 'tiktok ?(.*)',
   fromMe: isPrivate,
-  desc: 'Sends TikTok video ',
+  desc: 'Sends TikTok video or image',
   type: 'download',
 }, async (message, match, msg) => {
   match = await extractUrlFromMessage(match || message.reply_message.text);
-  if (!isUrl(match)) return message.reply("*Reply to Tiktok url or provide a Tiktok url*");
-  if (!match || !match.includes("tiktok")) return message.reply("*Reply to tiktok url or provide a tiktok url*");   
-  var res = await fetch(IronMan(`ironman/dl/v4/tiktok?url=${match}`));
-  var data = await res.json();
-  await message.client.sendMessage(message.chat, { video: { url: data.url }, caption: "*_Downloaded🤍_*" }, { quoted: message.data });
+  if (!isUrl(match)) return message.reply("*Reply to TikTok URL or provide a TikTok URL*");
+  if (!match || !match.includes("tiktok")) return message.reply("*Reply to TikTok URL or provide a TikTok URL*");
+  var data = await tiktokDl(match);
+  var vidd = data.data.find(item => item.type === 'nowatermark_hd');
+  var pic = data.data.filter(item => item.type === 'photo');
+  if (vidd) {
+    await message.client.sendMessage(message.chat, { video: { url: vidd.url }, caption: "*_Downloaded!_*" }, { quoted: message.data });
+  } else if (pic.length > 0) {
+    for (var photo of pic) {
+      await message.client.sendMessage(message.chat, { image: { url: photo.url }, caption: "*_Downloaded!_*" }, { quoted: message.data });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  } else {
+    return message.reply("*Couldn't find valid media to download*");
+  }
 });
 
 System({
