@@ -1,51 +1,5 @@
-/*------------------------------------------------------------------------------------------------------------------------------------------------------
+const { System, isPrivate, extractUrlsFromText, sleep, getJson, config, isUrl, IronMan, getBuffer, toAudio, instaDL } = require("../lib/");
 
-
-Copyright (C) 2023 Loki - Xer.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-Jarvis - Loki-Xer 
-
-
-------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-
-const { System, isPrivate, extractUrlFromMessage, sleep, getJson, config, isUrl, IronMan, getBuffer, toAudio, terabox, instaDl, aptoideDl, tiktokDl } = require("../lib/");
-
-
-const fetchData = async (mediafireUrl) => {
-    const data = await getJson(config.API + "download/mediafire?link=" + mediafireUrl)
-    if (!data || data.length === 0) throw new Error("Invalid MediaFire URL or no data found");
-    const { nama: name, mime, size, link } = data[0];
-    return { name, mime, size: size.trim(), link };
-};
-
-function isInstaUrl(url) {
-    const instaPattern = /^https?:\/\/(www\.)?instagram\.com\//;
-    return instaPattern.test(url);
-}
-
-System({
-    pattern: "mediafire",
-    fromMe: isPrivate,
-    desc: "mediafire downloader",
-    type: "download"
-}, async (message, match) => {
-    match = match || message.reply_message.text;
-    if (!match) return await message.reply("_Give a mediafire *Url*_");
-    const mediafireUrl = extractUrlFromMessage(match);
-    const documentData = await fetchData(mediafireUrl).catch(error => {
-        console.error("Error:", error);
-        return Promise.reject(error);
-    });
-    if (documentData) {
-        const downloadMessage = await message.send(`_*Downloading --> ${documentData.name}*_`);
-        await message.reply({ url: documentData.link }, { mimetype: documentData.mime, fileName: documentData.name, fileSize: documentData.size }, "document");
-        await downloadMessage.edit("_*Download complete!*_");
-    } else {
-        await message.send("_It's not a valid MediaFire URL_");
-    }
-});
 
 System({
     pattern: "ts ?(.*)",
@@ -77,21 +31,10 @@ System({
   desc: 'Downloads and sends an app ',
   type: 'download',
 }, async (message, match, m) => {
-  const appId = match;
+  let appId = match || m.reply_message.text;
   if (!appId) return await message.reply('*Nᴇᴇᴅ ᴀɴ ᴀᴘᴘ ɴᴀᴍᴇ*\n*Exᴀᴍᴘʟᴇ: ꜰʀᴇᴇ ꜰɪʀᴇ*');
-
-  const appInfo = await aptoideDl(appId);
-  await message.client.sendMessage(message.chat, {
-    document: {
-      url: appInfo.link,
-    },
-    mimetype: 'application/vnd.android.package-archive',
-    fileName: appInfo.appname, 
-    caption: `*App Name:* ${appInfo.appname}\n*Developer:* ${appInfo.developer}`,
-  }, {
-    quoted: message.data,
-  });
- 
+  const { result: appInfo } = await getJson(api + "download/aptoide?id=" + appId);
+  await message.reply({ url: appInfo.link }, { mimetype: 'application/vnd.android.package-archive', fileName: appInfo.appname, caption: `*App Name:* ${appInfo.appname}\n*Developer:* ${appInfo.developer}`, quoted: message.data }, "document");
 });
 
 System({
@@ -100,11 +43,10 @@ System({
     desc: 'Download Facebook video',
     type: 'download',
 }, async (message, text) => {
-    let match = await extractUrlFromMessage(text || message.reply_message.text);
-    if (!match) return await message.send("*Need a Facebook public media link*\n_Example: .fb_ ");       
-    const res = await fetch(IronMan(`ironman/dl/fbdl?link=${match}`));
-    const data = await res.json();
-    await message.reply({url: data.data.HD }, { caption: "_*Downloaded🤍*_" }, "video")
+    let match = (await extractUrlsFromText(text || message.reply_message.text))[0];
+    if (!match) return await message.reply("*Need a Facebook public media link*\n_Example: .fb_ \n*NOTE: ONLY VIDEO LINK*");       
+    const { result } = await getJson(api + "download/facebook?url=" + match);
+    await message.sendFromUrl(result.hd, { quoted: message.data });
 });
 
 System({
@@ -113,12 +55,12 @@ System({
     desc: "pinterest downloader",
     type: "download",
 }, async (message, text, m) => {
-    let match = await extractUrlFromMessage(text || message.reply_message.text);
+    let match = (await extractUrlsFromText(text || message.reply_message.text))[0];
     if (!match) return await message.reply('_Please provide a pinterest *url*');
     if (!isUrl(match)) return await message.reply("_Please provide a valid pinterest *url*");
     if (!match.includes("pin.it")) return await message.reply("_Please provide a valid pinterest *url*");
-    const { result } = await getJson(config.API + "download/pinterest?link=" + await extractUrlFromMessage(match))
-    await message.sendFromUrl(result.LokiXer.url, { caption: "_*downloaded 🤍*_" });
+    const { result } = await getJson(api + "download/pinterest?url=" + match);
+    await message.sendFromUrl(result.url, { caption: "_*downloaded 🤍*_" });
 });
 
 System({
@@ -127,16 +69,14 @@ System({
     desc: 'instagram downloader',
     type: 'download',
 }, async (message, match) => {
-    const url = await extractUrlFromMessage(match || message.reply_message.text);
-    if (!url) return await message.reply('_Please provide an Instagram *url*'); 
-    if (!isUrl(url)) return await message.reply("_Please provide a valid Instagram *url*");
-    if (!url.includes("instagram.com")) return await message.reply("_Please provide a valid Instagram *url*");
-    const data = await instaDl(url);
-    if (!data || data.length === 0) return await message.reply("_No content found at the provided URL.");
+    const url = (await extractUrlsFromText(match || message.reply_message.text))[0];
+    if (!url) return await message.reply('Please provide an Instagram *url*'); 
+    if (!isUrl(url)) return await message.reply("Please provide a valid Instagram *url*");
+    if (!url.includes("instagram.com")) return await message.reply("*Please provide a valid Instagram url*");
+    const data = await instaDL(url);
+    if (!data || data.length === 0) return await message.reply("*No content found at the provided URL*");
     for (const imageUrl of data) {
-        if (imageUrl) {
-            await message.sendFromUrl(imageUrl);
-        }
+        if (imageUrl) await message.sendFromUrl(imageUrl.url, { quoted: message.data });
     }
 });
 
@@ -146,22 +86,27 @@ System({
   desc: "To download insta story",
   type: "download"
 }, async (message, match) => {
-  if (match.startsWith("dl-url")) return await message.sendFromUrl(await extractUrlFromMessage(match), { caption: "_Done_" });
   match = match || message.reply_message.text;
   if (!isUrl(match)) {
     const { media: result } = await getJson(IronMan("ironman/ig/story?user=" + match));
-    if (!result) return await message.send("Not Found");
-    if (result.length === 1) return await message.sendFromUrl(result[0]);
-    const options = result.map((u, index) => ({ name: "quick_reply", display_text: `${index + 1}/${result.length}`, id: `story dl-url ${u}` }));
-    return await message.send(options, { body: "", footer: "*JARVIS-MD*", title: "*Insta Media Downloader_*\n" }, "button");
+    if (!result) return await message.reply("*Exᴀᴍᴘʟᴇ: .story username/link*");
+    if(result.length === 1) return await message.sendFromUrl(result[0], { caption: "*done ♥️*", quoted: message });
+    const options = result.map((u, index) => ({ displayText:`${index + 1}/${result.length}`, id: `sendurl ${u}` }));
+    if(message.isGroup) return await message.send("\n*Story downloader*\n", { values: options, withPrefix: true, participates: [message.sender] }, "poll");
+    for (const media of result) {
+      await message.sendFromUrl(media, { quoted: message.data });
+    }
   }
-  const url = await extractUrlFromMessage(match);
-  if (!isInstaUrl(url)) return message.reply("_*Provide a valid Instagram story URL*_");
-  const result = await instaDl(url);
-  if (!result) return await message.send("Not Found");
-  if (result.length === 1) return await message.sendFromUrl(result[0].download_link);
-  const options = result.map((u, index) => ({ name: "quick_reply", display_text: `${index + 1}/${result.length}`, id: `story dl-url ${u.download_link}` }));
-  await message.send(options, { body: "", footer: "*JARVIS-MD*", title: "*Insta Media Downloader_*\n" }, "button");
+  const url = (await extractUrlsFromText(match))[0];
+  if (!url.includes("instagram.com")) return message.reply("_*Provide a valid Instagram story URL*_");
+  const result = await instaDL(url);
+  if (!result || result.length === 0) return await message.reply("*Exᴀᴍᴘʟᴇ: .story username/link*");
+  if(result.length === 1) return await message.sendFromUrl(result[0].url, { caption: "*done ♥️*", quoted: message });
+  const options = result.map((u, index) => ({ displayText:`${index + 1}/${result.length}`, id: `sendurl ${u.url}` }));
+  if(message.isGroup) return await message.send("\n*Story downloader*\n", { values: options, withPrefix: true, participates: [message.sender] }, "poll");
+  for (const media of result) {
+    await message.sendFromUrl(media.url, { quoted: message.data });
+  }
 });
 
 System({
@@ -170,7 +115,7 @@ System({
   desc: 'SoundCloud downloader',
   type: 'download',
 }, async (message, match) => {
-  const link = await extractUrlFromMessage(match || message.reply_message.text);
+  const link = (await extractUrlsFromText(match || message.reply_message.text))[0];
   if (!link || !link.includes('soundcloud')) return await message.send("*Need a SoundCloud link to download*\n_Example: .soundcloud https://m.soundcloud.com/corpse_husband/life-waster_");
     const response = await getJson(IronMan(`ironman/soundcloud/download?link=${link}`));
     const q = await message.send(`*Downloading ${response.title}*`);
@@ -194,7 +139,6 @@ System({
       }
     }, "audio");
 });
-
 
 System({
     pattern: 'livewp ?(.*)',
@@ -233,7 +177,7 @@ System({
     type: 'download',
 }, async (message, match, m) => {
     if (!match || !match.includes('x.com')) return await message.send("_Need a x(twitter) media url_");
-    const url = match.trim();
+    const url = (await extractUrlsFromText(match || message.reply_message.text))[0];
     const { media } = await getJson(IronMan(`ironman/dl/x?url=${encodeURIComponent(url)}`));
     await message.sendFromUrl(media[0].url);
 });
@@ -245,7 +189,7 @@ System({
     type: 'download',
 }, async (message, match) => {
     if (!match || !match.includes('threads')) return await message.send("_Need a threads media url_");
-    const encodedUrl = encodeURIComponent(match.trim());
+    const encodedUrl = encodeURIComponent((await extractUrlsFromText(match.trim() || message.reply_message.text.trim()))[0]);
     const media = await getJson(IronMan(`ironman/dl/threads?url=${encodedUrl}`));
     if (media.video) {
         for (const videoUrl of media.video) {
@@ -265,11 +209,11 @@ System({
         desc: "download terabox file", 
         type: "download",
   }, async (msg, match) => {
-       match = await extractUrlFromMessage(match || msg.reply_message.text);
+       match = (await extractUrlsFromText(match || msg.reply_message.text))[0];
        if (!isUrl(match)) return msg.reply("*Reply to Terabox url or provide a Terabox url*");
        if (!match || !match.includes("tera")) return msg.reply("*Reply to Terabox url or provide a Terabox url*");
-       const { Name: teraBoxFileName, Download, FastDL } = await terabox(match);
-       await msg.send(await getBuffer("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTdlDLWf101d_p6TaRNvymnAiPPVFZPfTML9dVbj3LD6LLf_mTvHPH5pJq5&s=10"), { type: "image", value: [{ name: "cta_url", display_text: "Download", url: Download, merchant_url: Download, action: "url", icon: "", style: "link" }, { name: "cta_url", display_text: "Fast DL", url: FastDL, merchant_url: FastDL, action: "url", icon: "", style: "link" }], body: "", footer: "*JARVIS-MD*", title: `\nTo download the terabox file click the link below if download link not wroked use Fast DL\n\nFile Name: ` + await decodeURI(teraBoxFileName) +`\n` }, "button");
+       const { result } = await getJson(api + "download/terabox?url=" + match);
+       await msg.client.sendButton(msg.jid, { image: await getBuffer("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTdlDLWf101d_p6TaRNvymnAiPPVFZPfTML9dVbj3LD6LLf_mTvHPH5pJq5&s=10"), buttons: [{ name: "cta_url", display_text: "Download", url: result[0].HDVideo, merchant_url: result[0].HDVideo, action: "url", icon: "", style: "link" }, { name: "cta_url", display_text: "Fast DL", url: result[0].FastDl, merchant_url: result[0].FastDl, action: "url", icon: "", style: "link" }], body: "", footer: "*JARVIS-MD*", title: `\nTo download the terabox file click the link below if download link not wroked use Fast DL\n\nFile Name: ` + result[0].title +`\n` });
  });
 
 System({
@@ -278,17 +222,17 @@ System({
   desc: 'Sends TikTok video or image',
   type: 'download',
 }, async (message, match, msg) => {
-  match = await extractUrlFromMessage(match || message.reply_message.text);
+  match = (await extractUrlsFromText(match || message.reply_message.text))[0];
   if (!isUrl(match)) return message.reply("*Reply to TikTok URL or provide a TikTok URL*");
   if (!match || !match.includes("tiktok")) return message.reply("*Reply to TikTok URL or provide a TikTok URL*");
-  var data = await tiktokDl(match);
+  const { result: data } = await getJson(api + "download/tiktok?url=" + match);
   var vidd = data.data.find(item => item.type === 'nowatermark_hd');
   var pic = data.data.filter(item => item.type === 'photo');
   if (vidd) {
-    await message.client.sendMessage(message.chat, { video: { url: vidd.url }, caption: "*_Downloaded!_*" }, { quoted: message.data });
+    await message.reply({ url: vidd.url }, { caption: "*_Downloaded!_*", quoted: message.data }, "video");
   } else if (pic.length > 0) {
     for (var photo of pic) {
-      await message.client.sendMessage(message.chat, { image: { url: photo.url }, caption: "*_Downloaded!_*" }, { quoted: message.data });
+      await message.reply({ url: photo.url }, { caption: "*_Downloaded!_*", quoted: message.data }, "image");
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   } else {
@@ -302,7 +246,7 @@ System({
   desc: 'Downloads song from Spotify',
   type: 'download',
 }, async (message, match, m) => {
-  const link = await extractUrlFromMessage(match || message.reply_message.text);
+  const link = (await extractUrlsFromText(match || message.reply_message.text))[0];
   if (!link) return await message.reply("_Give a spotify *Url*_");
   if (!link.includes('https://open.spotify.com')) return await message.reply("_Need a Spotify URL_");
     const data = await getJson(IronMan(`ironman/dl/spotify?link=${link}`));
@@ -329,4 +273,34 @@ System({
         }
       }
     }, "audio");
+});
+
+System({
+    pattern: 'sendurl ?(.*)',
+    fromMe: isPrivate,
+    desc: 'Download url',
+    type: 'download',
+}, async (message, text) => {
+    let match = await extractUrlsFromText(text || message.reply_message.text);
+    if (!match) return await message.reply("*need a url*");
+    for (const imageUrl of match) {
+        if (imageUrl) await message.sendFromUrl(imageUrl, { caption: "*Done ✨*", quoted: message.data });
+    }
+});
+
+System({
+    pattern: 'snap ?(.*)',
+    fromMe: true,
+    desc: 'snap downloader',
+    type: 'download',
+}, async (message, match) => {
+    const url = (await extractUrlsFromText(match || message.reply_message.text))[0];
+    if (!url) return await message.reply('Please provide an Instagram *url*'); 
+    if (!isUrl(url)) return await message.reply("Please provide a valid SnapChat *url*");
+    if (!url.includes("snapchat.com")) return await message.reply("*Please provide a valid snapchat url*");
+    const { result: data } = await getJson(api + "download/snapchat?url=" + url);
+    if (!data || data.length === 0) return await message.reply("*No content found at the provided URL*");
+    for (const imageUrl of data) {
+        if (imageUrl) await message.sendFromUrl(imageUrl.url, { quoted: message.data });
+    }
 });

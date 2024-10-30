@@ -9,11 +9,17 @@ Jarvis - Loki-Xer
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-const plugins = require("../lib/utils");
-const { System, isPrivate, isUrl, version, readMore } = require("../lib");
+const plugins = require("../lib/system");
+const { System, isPrivate, isUrl } = require("../lib");
 const { BOT_INFO, MEDIA_DATA, MENU_FONT } = require("../config");
 const { uptime } = require("os");
+const { version } = require('../package.json');
 const fancy = require('./client/fancy');
+
+async function readMore() {
+  const readmore = String.fromCharCode(8206).repeat(4001);
+  return readmore;
+};
 
 const clockString = (duration) => {
     let seconds = Math.floor((duration / 1000) % 60),

@@ -10,7 +10,7 @@ Jarvis - Loki-Xer
 ------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
-const { System, setData, pluginList, removeData, isUrl, extractUrlsFromText, getData } = require("../lib/");
+const { System, setData, pluginList, removeData, isUrl, extractUrlsFromText, getData, sleep } = require("../lib/");
 const axios = require("axios");
 const util = require("util");
 const fs = require("fs");
@@ -20,7 +20,7 @@ System({
   pattern: "plugin",
   fromMe: true,
   desc: "Installs External plugins",
-  type: "user",
+  type: "support",
 }, async (message, match) => {
   let pluginName = ""; 
   match = match || message.reply_message.text;
@@ -64,6 +64,7 @@ System({
             }
             await setData(pluginName.split(',')[0], url, "true", "plugin");
             await message.send(`_*New plugin installed : ${pluginName}*_`);
+            await sleep(1500);
           }
         } catch (error) {
           return await message.send("_Error occurred while installing plugin_");
@@ -82,7 +83,7 @@ System({
     pattern: "remove(?: |$)(.*)",
     fromMe: true,
     desc: "Remove external plugins",
-    type: "user",
+    type: "support",
 }, async (message, match) => {
      if (!match) return await message.send("_*Need a plugin name to remove*_");
        const pluginPath = __dirname + "/" + match + ".js";

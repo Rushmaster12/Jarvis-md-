@@ -12,14 +12,15 @@ Jarvis - Loki-Xer
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
-const { System, sendAlive, setData, getData, isPrivate, config, IronMan, Message } = require("../lib/");  
+const { Message } = require("../lib/Base/");  
+const { System, sendAlive, setData, getData, isPrivate, config, IronMan, database, removeData, } = require("../lib/");  
 const { getUptime, Runtime } = require("./client/"); 
 
 System({
 	pattern: "ping",
 	fromMe: isPrivate,
 	desc: "To check ping",
-	type: "user",
+	type: "tool",
 }, async (message) => {
 	const start = new Date().getTime();
 	const ping = await message.send("*𝆺𝅥 running 𝆺𝅥*");
@@ -62,7 +63,7 @@ System({
    pattern: "reboot",
    fromMe: true,
    desc: "to reboot your bot",
-   type: "user",
+   type: "tool",
 }, async (message, match, m) => {
     await message.reply('_Rebooting..._')
     require('pm2').restart('index.js');
@@ -72,7 +73,7 @@ System({
     pattern: 'alive ?(.*)',
     fromMe: isPrivate,
     desc: 'Check if the bot is alive',
-    type: 'user'
+    type: 'tool'
 },
 async (message, match) => {
     const { alive } = await getData(message.user.id);
@@ -93,7 +94,7 @@ System({
     pattern: 'rm ?(.*)',
     fromMe: isPrivate,
     desc: 'Make Readmore Text',
-    type: 'user',
+    type: 'tool',
 }, async (message, match,m) => {
     if (!match) return m.reply("*Need text*\n_Example: .readmore Hi\\how are you_");
     const readmore = match.split('\\');
@@ -168,7 +169,7 @@ System({
     pattern: 'calc ?(.*)',
     fromMe: isPrivate,
     desc: 'Sends the result of a mathematical expression',
-    type: 'tools',
+    type: 'tool',
 }, async (message, match, m) => {
     if (!match) {
         await message.reply("*EXAMPLE* *:* _.calc 2+2_");
@@ -199,4 +200,104 @@ System({
     }
    const result = calculate(num1, op, num2);
    await message.reply(`Q : ${num1} ${op} ${num2}\n\nResult: *${result}*`);
+});
+
+
+
+System({
+    pattern: "setcmd",
+    fromMe: true,
+    desc: "set a sticker as a cmd",
+    type: "tool",
+}, async (message, match) => { 
+    if (!message.reply_message || !message.reply_message.i || !message.reply_message.msg || !message.reply_message.msg.fileSha256) 
+    return await message.reply('_Reply to an image/video/audio/sticker_'); 
+    if (!match) return await message.reply('_Example: setcmd ping_'); 
+    const hash = message.reply_message.msg.fileSha256.join("");
+    const setcmd = await setData(hash, match, "true", "setCmd");
+    if (!setcmd) return await message.reply('_Failed_');
+    await message.reply('_Success_');
+});
+
+System({
+    pattern: 'delcmd ?(.*)',
+    fromMe: true,
+    desc: 'to delete audio/image/video cmd',
+    type: 'tool'
+}, async (message, match) => {
+    if (!message.reply_message || !message.reply_message.i) 
+    return await message.reply('_Reply to an image/video/audio/sticker_');
+    let hash = message.reply_message.msg.fileSha256.join("")
+    if (!hash) return await message.reply('_Failed_');
+    const delcmd = await removeData(hash, "setCmd");
+    if (!delcmd) return await message.reply('_Failed_');
+    await message.reply('_Success_');
+});
+
+System({
+    pattern: 'listcmd ?(.*)',
+    fromMe: true,
+    desc: 'to list all commands',
+    type: 'tool'
+}, async (message, match) => {
+    const result = await database.findAll({ where: { name: "setCmd" } });
+    if (!result || result.length === 0) return await message.reply("_*No commands set*_");
+    const messages = result.map((entry, index) => `_${index + 1}. ${entry.dataValues.message}_`);
+    const formattedList = messages.join('\n');
+    return await message.reply("*List Cmd*\n\n" + formattedList);
+});
+
+System({
+    pattern: 'mention ?(.*)',
+    fromMe: true,
+    desc: 'mention',
+    type: 'tool'
+}, async (message, match) => {
+   let msg;
+   const { mention } = await getData(message.user.id);    
+    if (match === 'get' && message.sudo.includes(message.sender)) {
+        return await message.send(mention.message);
+    } else if (match && message.sudo.includes(message.sender)) {
+        if (match === "off") {
+            msg = await setData(message.user.id, mention.message, "false", "mention");
+        } else if (match === "on") {
+            msg = await setData(message.user.id, mention.message, "true", "mention");
+        } else {
+            msg = await setData(message.user.id, match, "true", "mention");
+        }
+        
+        if (msg) {
+            return await message.reply('_Mention Updated__');
+        } else {
+            return await message.reply('_Error in updating__');
+        }
+    }
+    return await message.reply("_You can check the format of mention https://github.com/Loki-Xer/Jarvis-md/wiki_");
+});
+
+System({
+    pattern: 'autoreaction ?(.*)',
+    fromMe: true,
+    desc: 'auto reaction',
+    type: 'tool'
+}, async (message, match) => {
+    if (match === "off") {
+    await setData(message.user.id, "disactie", "false", "autoreaction");
+    await message.reply("_*autoreaction disabled*__");
+    } else if (match === "on") {
+    await setData(message.user.id, "actie", "true", "autoreaction");
+    await message.reply("_*autoreaction enabled*__");
+    } else if (!match) {
+    if (message.isGroup) {
+      await message.send("\nChoose one to update autoreaction\n",
+                { values: [
+                    { displayText: "on", id: "autoreaction on" },
+                    { displayText: "off", id: "autoreaction off" }
+                ],
+                withPrefix: true,
+                participates: [message.sender]
+            }, "poll");
+    } else {
+        await message.reply("_*autoreaction on/off*__");
+    }}
 });

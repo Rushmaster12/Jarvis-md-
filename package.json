@@ -1,15 +1,14 @@
 {
     "name": "Jarvis-md",
-    "version": "2.0.0",
+    "version": "2.5.0",
     "description": "A simple WhatsApp Bot Based On WhiskeySockets/Baileys",
     "main": "index.js",
     "scripts": {
         "start": "pm2 start . --attach --name Jarvis-md",
-        "stop": "pm2 stop Jarvis-md",
-        "postinstall": "yarn global add pm2"
+        "stop": "pm2 stop Jarvis-md"
     },
     "engines": {
-        "node": ">=18.0.0 <=21.x"
+        "node": ">=18.0.0 <=22.x"
     },
     "dependencies": {
         "@adiwajshing/keyed-db": "^0.2.4",
@@ -17,9 +16,10 @@
         "@ffmpeg-installer/linux-x64": "^4.1.0",
         "@hapi/boom": "^10.0.1",
         "translate-google-api": "^1.0.4",
-        "@whiskeysockets/baileys": "Loki-Xer/Baileys#bc838b38aed3d83b23ece6bd97851d435c08f515",
+        "@whiskeysockets/baileys": "git+https://github.com/Loki-Xer/Baileys.git",
         "awesome-phonenumber": "^6.4.0",
-        "axios": "^1.7.3",
+        "axios": "*",
+        "got": "11.8.3",
         "browser-id3-writer": "^4.4.0",
         "cheerio": "^1.0.0-rc.10",
         "crypto-js": "^4.1.1",
@@ -33,7 +33,7 @@
         "jimp": "^0.16.1",
         "jsdom": "^20.0.0",
         "link-preview-js": "^3.0.4",
-        "node-fetch": "^2.0.0",
+        "node-fetch": "^2.6.0",
         "node-webpmux": "^3.2.0",
         "pdfkit": "^0.15.0",
         "pino": "^8.14.1",

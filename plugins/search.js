@@ -10,7 +10,7 @@ Jarvis - Loki-Xer
 ------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
-const { System, IronMan, isPrivate, getJson, Google } = require("../lib/");
+const { System, IronMan, isPrivate, getJson } = require("../lib/");
 
 System({
     pattern: 'ig ?(.*)',
@@ -19,8 +19,7 @@ System({
     type: 'search',
 }, async (message, match) => {
     if (!match) return await message.reply("*Need a username*\n_Example: .ig sedboy.am_");
-    var res = await fetch(IronMan(`ironman/igstalk?id=${encodeURIComponent(match.trim())}`));
-    var data = await res.json();
+    var data = await getJson(IronMan(`ironman/igstalk?id=${encodeURIComponent(match.trim())}`));
     var caption = '';
     if (data.name) caption += `*𖢈ɴᴀᴍᴇ:* ${data.name}\n`;
     if (data.username) caption += `*𖢈ᴜꜱᴇʀɴᴀᴍᴇ:* ${data.username}\n`;
@@ -45,14 +44,13 @@ System({
     type: 'search',
 }, async (message, match, m) => {
     if (!match) return await message.reply("*Need a query to search*\n_Example: who is iron man_");
-    const query = match;
-    const results = await Google(query);
+    const { result: data } = await getJson(api + "search/google?q=" + match);
     let response = '';
-    results.forEach((result, i) => {
-        response += `━━━──────${i + 1}─────━━━\n`;
+    data.forEach((result, i) => {
+        response += `\n`;
         response += `*TITLE:* ${result.title}\n`;
         response += `*LINK:* ${result.link}\n`;
-        response += `*DESCRIPTION:* ${result.description}\n\n`;
+        response += `*DESCRIPTION:* ${result.description}\n`;
     });
     await message.send(response, { quoted: message.data });
 });
@@ -64,9 +62,9 @@ System({
         type: "search"
 }, async (message, match) => {
         if (!match) return await message.send("*Need a query to search*\n_Example: who is iron man_");
-        const response = await Google(match);
+        const { result: response } = await getJson(api + "search/google?q=" + match);
         const text = `*⬢ Title*: ${response[0].title}\n\n*⬢ Description*: _${response[0].description}_\n`
-        await message.send([{ name: "cta_url", display_text: "Visit Google", url: response[0].link, merchant_url: response[0].link, action: "url", icon: "", style: "link" }], { body: "", footer: "*JARVIS-MD*", title: text }, "button");
+        await message.client.sendButton(message.jid, { buttons: [{ name: "cta_url", display_text: "Visit Google", url: response[0].link, merchant_url: response[0].link, action: "url", icon: "", style: "link" }], body: "", footer: "*JARVIS-MD*", title: text });
 });
 
 System({
@@ -104,14 +102,14 @@ System({
     desc: "Get details of a Device",
     type: "search"
 }, async (message, match, m) => {
-    if (!match) return await message.send("*Need a device name*\n_Example: device Xiaomi 11 i_");
+    if (!match) return await message.reply("*Need a device name*\n_Example: device Xiaomi 11 i_");
     var data = await getJson(IronMan(`ironman/device?query=${match}`));
     if (Array.isArray(data) && data.length > 0) {
         const { id, name, img, description } = data[0];
         const cap = `*➭Name:* ${name}\n*➭Id:* ${id}\n*➭Description:* ${description}`;
-        await message.send({ url: img }, { caption: cap }, "image");
+        await message.reply({ url: img }, { caption: cap }, "image");
     } else {
-        await message.send("*Device not Found*");
+        await message.reply("*Device not Found*");
     }
 });
 
@@ -121,7 +119,7 @@ System({
     desc: 'wallpaper search',
     type: 'search'
 }, async (message, match, m) => {
-    if (!match) return await message.send("*Need a wallpaper name*\n_Example: .wallpaper furina_");
+    if (!match) return await message.reply("*Need a wallpaper name*\n_Example: .wallpaper furina_");
     const images = await getJson(IronMan(`ironman/wallpaper/wlhven?name=${encodeURIComponent(match)}`));
     const urls = images.filter(item => item.url).map(item => item.url);
     if (urls.length > 0) {
@@ -130,7 +128,7 @@ System({
             await message.send({ url: imageUrl }, {}, "image");
         }
     } else {
-        await message.send("No wallpapers found for the given query.");
+        await message.reply("No wallpapers found for the given query.");
     }
 });
 
@@ -142,14 +140,14 @@ System({
 }, async (message, match) => {
   const [query, count] = match.split(',').map(item => item.trim());
   const imageCount = count ? parseInt(count, 10) : 5;
-  if (!query) return await message.send("*Need a Query*\n_Example: .img ironman, 5_");
+  if (!query) return await message.reply("*Need a Query*\n_Example: .img ironman, 5_");
   const msg = await message.send(`Downloading ${imageCount} images of *${query}*`);
   const urls = await getJson(IronMan(`ironman/s/google?image=${encodeURIComponent(query)}`));
   if (urls.length === 0) return await message.send("No images found for the query");
   const list = urls.length <= imageCount ? urls : urls.sort(() => 0.5 - Math.random()).slice(0, imageCount);
   for (const url of list) {
     await new Promise(resolve => setTimeout(resolve, 1000));
-    await message.send(url, {}, "image");
+    await message.sendFromUrl(url)
   }
   await msg.edit("*Downloaded*");
 });
@@ -160,7 +158,7 @@ System({
     desc: 'github user details',
     type: 'search',
 }, async (message, match) => {
-    if (!match) return await message.send("*_Need Github UserName_*");   
+    if (!match) return await message.reply("*_Need Github UserName_*");   
     const data = await getJson(`https://api.github.com/users/${match}`);
     const GhUserPP = data.avatar_url || "https://graph.org/file/924bcf22ea2aab5208489.jpg";
     const userInfo = `\n⎔ *Username* : ${data.login} \n⎔ *Name* : ${data.name || "Not Available"} \n⎔ *Bio* : ${data.bio || "Not Available"} \n\n➭ *ID* : ${data.id}\n➭ *Followers* : ${data.followers}\n➭ *Following* : ${data.following}\n➭ *Type* : ${data.type}\n➭ *Company* : ${data.company || "Not Available"}\n➭ *Public Repos* : ${data.public_repos}\n➭ *Public Gists* : ${data.public_gists}\n➭ *Email* : ${data.email || "Not Available"}\n➭ *Twitter* : ${data.twitter_username || "Not Available"}\n➭ *Location* : ${data.location || "Not Available"}\n➭ *Blog* : ${data.blog || "Not Available"}\n➭ *Profile URL* : ${data.html_url}\n➭ *Created At* : ${data.created_at}\n\n`;
@@ -196,8 +194,7 @@ System({
 }, async (message, match, m) => {
   if (!match) return await message.reply("*Give a Spotify query to search*\n_Example: .sps yoasobi idol_");
   const query = match.startsWith('-full') ? match.slice(5).trim() : match;
-  const x = await fetch(IronMan(`ironman/spotify/s?query=${query}`));
-  const result = await x.json();
+  const result = await getJson(IronMan(`ironman/spotify/s?query=${query}`));
   if (match.startsWith('-full')) {
     let cap = '';
     result.forEach(item => {
@@ -223,8 +220,7 @@ System({
 }, async (message, match, m) => {
   if (!match) return await message.reply("*Nᴇᴇᴅ ᴀɴ ᴀᴘᴘ ɴᴀᴍᴇ*\n*Example.ps WhatsApp*");
   const query = match.startsWith('-full')? match.slice(5).trim() : match;
-  const x = await fetch(IronMan(`ironman/search/playstore?app=${query}`));
-  const result = await x.json();
+  const result = await getJson(IronMan(`ironman/search/playstore?app=${query}`));
   if (match.startsWith('-full')) {
     let cap = '';
     result.forEach(item => {
@@ -243,12 +239,12 @@ System({
 });
 
 System({
-  pattern: 'tt ?(.*)',
+  pattern: 'tkt ?(.*)',
   fromMe: isPrivate,
   desc: 'TikTok Stalk',
   type: 'search',
 }, async (message, match) => {
-  if (!match) return await message.send("*Need a TikTok username*");
+  if (!match) return await message.reply("*Need a TikTok username*");
   const response = await fetch(IronMan(`ironman/stalk/tiktok?id=${encodeURIComponent(match)}`));
   const data = await response.json();
   const { user, stats } = data;
@@ -270,7 +266,7 @@ System({
     desc: 'Search for images on Pinterest',
     type: 'search',
 }, async (message, match, m) => {
-    if (!match) return await message.send("*Need a query to search on Pinterest*\n_Example: .pinimg furina_\nWith count eg: .pinimg furina,5");
+    if (!match) return await message.reply("*Need a query to search on Pinterest*\n_Example: .pinimg furina_\nWith count eg: .pinimg furina,5");
     var [query, count] = match.trim().split(',').map(str => str.trim());
     var res = await fetch(IronMan(`search/pin?query=${query}`));
     var images = await res.json();
@@ -290,7 +286,7 @@ System({
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
     } else {
-        await message.send("No images found for the given query.");
+        await message.reply("*No images found for the given query.*");
     }
 });
 
@@ -320,7 +316,7 @@ System({
     type: 'search',
     desc: 'Search for song lyrics',
 }, async (message, match) => {
-    if(!match) return await message.send("*Need a song name!*\n_Example: .lyrics let me die_");
+    if(!match) return await message.reply("*Need a song name!*\n_Example: .lyrics let me die_");
     const [song, author] = match.split(/\s+by\s+/i);
     const res = await fetch(IronMan(`ironman/song/lrc?track_name=${encodeURIComponent(song)}${author ? `&artist_name=${encodeURIComponent(author)}` : ''}`));
     if (!res.ok) return await message.send("Error fetching lyrics. Please try again later.");
@@ -328,3 +324,15 @@ System({
     const caption = `*Title:* ${title}\n*Artist:* ${artist}\n\n${lyrics}`;
     await message.client.sendMessage(message.chat, { image: { url: image }, caption }, {quoted: message});
 });
+
+System({
+    pattern: 'telegram ?(.*)',
+    fromMe: isPrivate,
+    desc: 'telegram profile details',
+    type: 'search',
+}, async (message, match) => {
+    if (!match) return await message.reply("*Need a username*\n_Example: .telegram @TGMovies2Bot_");
+    const { result } = await getJson(api + "stalk/telegram?query=" + match)
+    return message.reply({ url: result.profile }, { caption: `*User name :* ${result.userName}\n*Nick name :* ${result.nickName}\n*About :* ${result.about}\n*Via telegram :* ${result.telegram}`}, "image")
+});
+

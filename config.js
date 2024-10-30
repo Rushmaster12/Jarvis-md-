@@ -7,8 +7,9 @@ if (fs.existsSync('config.env')) {
   });
 };
 
-const toBool = (x) => x === 'true';
+global.api = 'https://nervous-rosamond-jarvis-bot-99587a26.koyeb.app/';
 
+const toBool = (x) => x === 'true';
 const DATABASE_URL = process.env.DATABASE_URL === undefined ? "./database.db" : process.env.DATABASE_URL
 
 module.exports = {
@@ -16,12 +17,12 @@ module.exports = {
   BAN_CHATS: process.env.BAN_CHATS || "",
   PORT: toBool(process.env.PORT) || 8000,
   PM_BLOCKER: toBool(process.env.PM_BLOCKER) || false,
-  PM_BLOCKER_MSG: process.env.PM_BLOCKER_MSG || "_*Pm blocker active on this chat*_",
+  PM_BLOCKER_MSG: process.env.PM_BLOCKER_MSG || "```Pm blocker active on this chat!!```",
   AUDIO_DATA: process.env.AUDIO_DATA || 'ʟᴏᴋɪ-xᴇʀ;ᴊᴀʀᴠɪꜱ;https://graph.org/file/58ea74675af7836579a3a.jpg',
   WARN_COUNT: process.env.WARN_COUNT || '3',
-  ANTILINK_MSG: process.env.ANTILINK_MSG || "_*Link Not allowed in this group*_",
-  ANTIBOT_MSG: process.env.ANTIBOT_MSG || "_*Bot Not allowed in this group*_",
-  ANTIWORD_MSG: process.env.ANTIWORD_MSG || "_*antiword deleted successfully*_",
+  ANTILINK_MSG: process.env.ANTILINK_MSG || "```Link Not allowed in this group!!```",
+  ANTIBOT_MSG: process.env.ANTIBOT_MSG || "```Antibot deleted successfully!!```",
+  ANTIWORD_MSG: process.env.ANTIWORD_MSG || "```Antiword deleted successfully!!```",
   ALIVE_DATA : process.env.ALIVE_DATA || "_*Hy &sender i am alive now*_\n\n_PLATFORM: &platform_\n_RUNTIME : &runtime_\n\n_. type alive to update your alive message_",
   SESSION_ID: process.env.SESSION_ID || '',
   LANG: process.env.LANG || 'EN',
@@ -32,11 +33,11 @@ module.exports = {
   READ_MSG: toBool(process.env.READ_MSG || "false"),
   BRANCH: "main",
   LINKPREVIEW: toBool(process.env.LINKPREVIEW || "false"),
-  CONTEXTINFO: process.env.CONTEXTINFO || `{"title": "ᴊᴀʀᴠɪꜱ-ᴍᴅ", "body": "ᴀᴡᴇꜱᴏᴍᴇ 🍉", "thumbnailUrl": "https://i.imgur.com/OWJc4Qx.jpeg", "renderLargerThumbnail": true, "mediaType": 1, "mediaUrl": "", "sourceUrl": "https://github.com/Loki-Xer/Jarvis-md", "showAdAttribution": true}`,
+  CONTEXTINFO: process.env.CONTEXTINFO || `{"title": "ᴊᴀʀᴠɪꜱ-ᴍᴅ", "body": "ᴀᴡᴇꜱᴏᴍᴇ 🍉", "thumbnailUrl": "https://i.imgur.com/OWJc4Qx.jpeg", "renderLargerThumbnail": false, "mediaType": 1, "mediaUrl": "", "sourceUrl": "https://github.com/Loki-Xer/Jarvis-md", "showAdAttribution": true}`,
   KOYEB_API: process.env.KOYEB_API,
+  KOYEB_APP_NAME: process.env.KOYEB_APP_NAME,
   BRAINSHOP: process.env.BRAINSHOP || '172372,nbjE0YAlyw3cpoMl',
   TGTOKEN: "bot891038791:AAHWB1dQd-vi0IbH2NjKYUk-hqQ8rQuzPD4",
-  API: 'https://api-loki-ser-1o2h.onrender.com/',
   STICKER_PACKNAME: process.env.STICKER_PACKNAME || 'ᴊᴀʀᴠɪꜱ;ᴡᴀʙᴏᴛ',
   CALL_BLOCK: toBool(process.env.CALL_BLOCK) || false,
   SAVE_STATUS: toBool(process.env.SAVE_STATUS) || false,

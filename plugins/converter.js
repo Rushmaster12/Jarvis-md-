@@ -16,27 +16,27 @@ const { fromBuffer } = require('file-type');
 const { Sticker, StickerTypes } = require("wa-sticker-formatter");
 const { exec } = require("child_process");
 const translate = require("translate-google-api");
+const axios = require("axios");
 const {
     config,
     System,
     isPrivate,
     toAudio,
     toVideo,
+    getJson,
     postJson,
     AddMp3Meta,
     sendUrl,
     getBuffer,
     webpToPng,
     webp2mp4,
-    elevenlabs,
-    removeBg,
     setData,
     getData,
-    bitly,
     IronMan,
-    GraphOrg
+    extractUrlsFromText,
+    makeUrl
 } = require("../lib/");
-const { trim } = require("./client/"); 
+const { trim, elevenlabs, removeBg } = require("./client/"); 
 const stickerPackNameParts = config.STICKER_PACKNAME.split(";");
 const fancy = require('./client/fancy');
 
@@ -121,7 +121,7 @@ System({
 }, async (message) => {
         const ffmpeg = ff();
         if (!message.reply_message?.audio) return await message.send("_Reply to an audio message_");
-        const file = './lib/temp/media/black.jpg';
+        const file = './plugins/client/black.jpg';
         const audioFile = './lib/temp/audio.mp3';
         fs.writeFileSync(audioFile, await message.reply_message.download());
         ffmpeg.input(file);
@@ -280,7 +280,7 @@ System({
    if (match == 'list') 
    return await message.send(` *List of Aitts*\n\n 1 _rachel_ \n 2 _clyde_ \n 3 _domi_ \n 4 _dave_ \n 5 _fin_ \n 6 _bella_ \n 7 _antoni_ \n 8 _thomas_ \n 9 _charlie_ \n 10 _emily_ \n 11 _elli_ \n 12 _callum_ \n 13 _patrick_ \n 14 _harry_ \n 15 _liam_ \n 16 _dorothy_ \n 17 _josh_ \n 18 _arnold_ \n 19 _charlotte_ \n 20 _matilda_ \n 21 _matthew_ \n 22 _james_ \n 23 _joseph_ \n 24 _jeremy_ \n 25 _michael_ \n 26 _ethan_ \n 27 _gigi_ \n 28 _freya_ \n 29 _grace_ \n 30 _daniel_ \n 31 _serena_ \n 32 _adam_ \n 33 _nicole_ \n 34 _jessie_ \n 35 _ryan_ \n 36 _sam_ \n 37 _glinda_ \n 38 _giovanni_ \n 39 _mimi_ \n`.replace(/├/g, ''));
    const [v, k] = match.split(/,;|/);
-   if (!k) return await message.send(`*_need voice id and text_*\n_example_\n\n_*aitts* hey vroh its a test,adam_\n_*aitts list*_`)
+   if (!k && !v) return await message.send(`*_need voice id and text_*\n_example_\n\n_*aitts* hey vroh its a test,adam_\n_*aitts list*_`)
    const stream = await elevenlabs(match)
    if (!stream) return await message.send(`_*please upgrade your api key*_\n_get key from http://docs.elevenlabs.io/api-reference/quick-start/introduction_\n_example_\n\nsetvar elvenlabs: your key\n_or update your config.js manually_`);
    return await message.send({ stream }, { mimetype: 'audio/mpeg' }, 'audio');
@@ -311,7 +311,7 @@ System({
   const rtype = match ? match.toLowerCase() : '';
   if (!rmap.hasOwnProperty(rtype)) return await message.reply('*Need rotation type.*\n_Example: .rotate left, right, vertical, or horizontal_');
   const option = rmap[rtype];
-  const url = await GraphOrg(await message.reply_message.downloadAndSaveMedia());
+  const url = await makeUrl(await message.reply_message.downloadAndSave(), { 'User-Agent': 'Jarvis' });
   await message.sendFromUrl(IronMan(`ironman/convert/rotate?image=${url}&option=${option}`));
 });
 
@@ -348,7 +348,7 @@ System({
     }
     if (!m.image && !m.reply_message.image) return m.reply("*Reply to an image*");
     const db = await getData(m.user.id);
-    if (!db.removeBg) return await m.send("https://graph.org/file/dc22fb232b0092e6326ec.png", { type: "image", value: [{ name: "cta_url", display_text: "Sign in", url: "https://accounts.kaleido.ai/users/sign_in", merchant_url: "https://accounts.kaleido.ai/users/sign_in", action: "url", icon: "", style: "link" }, { name: "cta_url", display_text: "Get API Key", url: "https://www.remove.bg/dashboard#api-key", merchant_url: "https://www.remove.bg/dashboard#api-key", action: "url", icon: "", style: "link" }], body: "", footer: "*JARVIS-MD*", title: `\nDear user, get an API key to use this command. Sign in to remove.bg and get an API key. After that, use \n\n *${m.prefix} rbg key: _your API key_*\n` }, "button");
+    if (!db.removeBg) return await m.client.sendButton(m.jid, { image: { url: "https://graph.org/file/dc22fb232b0092e6326ec.png" }, buttons: [{ name: "cta_url", display_text: "Sign in", url: "https://accounts.kaleido.ai/users/sign_in", merchant_url: "https://accounts.kaleido.ai/users/sign_in", action: "url", icon: "", style: "link" }, { name: "cta_url", display_text: "Get API Key", url: "https://www.remove.bg/dashboard#api-key", merchant_url: "https://www.remove.bg/dashboard#api-key", action: "url", icon: "", style: "link" }], body: "", footer: "*JARVIS-MD*", title: `\nDear user, get an API key to use this command. Sign in to remove.bg and get an API key. After that, use \n\n *${m.prefix} rbg key: _your API key_*\n` });
     let buff = await removeBg(await m.downloadAndSaveMediaMessage(m.image ? m.msg : m.quoted ? m.reply_message.msg : null), db.removeBg.message);
     if(!buff) return m.reply("*Error in api key or can't upload to remove.bg*");
     await m.reply(buff, {}, "image");
@@ -386,12 +386,11 @@ System({
     fromMe: isPrivate,
     desc: 'Shortern a URL using Bitly',
     type: 'converter',
-}, async (message, match, m) => {
-    const longUrl = match || message.reply_message.text;
+}, async (message, text, m) => {
+    const longUrl = (await extractUrlsFromText(text || message.reply_message.text))[0];
     if (!longUrl) return await message.reply('*Please provide a URL to shorten.*');
-    const response = await bitly(longUrl);
-    const shortUrl = response.link;
-    await message.send(`*SHORT URL:* ${shortUrl}`, { quoted: message.data });
+    const { result } = await getJson(api + "tools/bitly?q=" + longUrl);
+    await message.send(`*SHORT URL:* ${result.link}`, { quoted: message.data });
 });
 
 

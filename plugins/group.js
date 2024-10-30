@@ -17,7 +17,7 @@ const {
     System,
     isPrivate,
     warnMessage,
-    extractUrlFromMessage,
+    extractUrlsFromText
 } = require("../lib/");
 const { parsedJid, isAdmin, isBotAdmins, getAllGroups } = require("./client/");
 
@@ -181,7 +181,7 @@ System({
     desc: "mention all users in the group",
     type: "group",
 }, async (message, match) => {
-    if (!message.isGroup) return;   
+    if (!message.isGroup) return await message.reply(`@${message.sender.split("@")[0]}`, { mentions: [message.sender] });   
     const { participants } = await message.client.groupMetadata(message.from).catch(e => {});
     let admins = await participants.filter(v => v.admin !== null).map(v => v.id);
     let msg = "";
@@ -252,13 +252,12 @@ System({
     desc: "to join a group",
     type: 'group'
 }, async (message, match) => {
-   match = match || message.reply_message.text;
+   match = (await extractUrlsFromText(match || message.reply_message.text))[0];
    if(!match) return await message.reply('_Enter a valid group link!_');
    if(!isUrl(match)) return await message.send('_Enter a valid group link!_');
-   const matchUrl = extractUrlFromMessage(match);
-   if(!matchUrl) return await message.send('_Enter a valid group link!_');
-   if (matchUrl && matchUrl.includes('chat.whatsapp.com')) {
-       const groupCode = matchUrl.split('https://chat.whatsapp.com/')[1];
+   if(!match) return await message.send('_Enter a valid group link!_');
+   if (match && match.includes('chat.whatsapp.com')) {
+       const groupCode = match.split('https://chat.whatsapp.com/')[1];
        const joinResult = await message.client.groupAcceptInvite(groupCode);
        if (joinResult) return await message.reply('_Joined!_'); 
            await message.reply('_Invalid Group Link!_'); 
@@ -361,7 +360,7 @@ System({
         const participantJids = participants.map(u => u.id).join("\n\n")
         return message.reply(`*Group Participants Jid*\n\n*Group Name:* ${subject}\n*All Participants Jid*\n\n${participantJids}`);
     }
-    await message.send([ { name: "quick_reply", display_text: "All Group Info", id: "gjid info" }, { name: "quick_reply", display_text: "Group Participants Jid", id: "gjid participants jid" } ], { body: "", footer: "*JARVIS-MD*", title: "*Group Jid Info 🎏*\n" }, "button");
+    await message.client.sendButton(message.jid, { buttons: [{ name: "quick_reply", display_text: "All Group Info", id: "gjid info" }, { name: "quick_reply", display_text: "Group Participants Jid", id: "gjid participants jid" }], body: "", footer: "*JARVIS-MD*", title: "*Group Jid Info 🎏*\n" });
 });
 
 
@@ -371,7 +370,7 @@ System({
     desc: 'Shows group invite info',
     type: 'group'
 }, async (message, match) => {
-    match = match || message.reply_message.text
+    match = (await extractUrlsFromText(match || message.reply_message.text))[0];
     if (!match) return await message.reply('*Need Group Link*\n_Example : ginfo group link_')
     const [link, invite] = match.match(/chat.whatsapp.com\/([0-9A-Za-z]{20,24})/i) || []
     if (!invite) return await message.reply('*Invalid invite link*')
@@ -431,7 +430,7 @@ System({
     if (!message.isGroup) return message.reply("_*This command is for groups only.*_");
     const data = await message.store.groupStatus(message.jid, "active");
     let activeUsers = Array.isArray(data) ? `*Total Active Users ${data.length}*\n\n` + data.map(item => `*Name: ${item.pushName}*\n*Number: ${item.jid.split("@")[0]}*\n*Total Messages: ${item.messageCount}*\n\n`).join("") : "_*No active users found.*_";
-    return await message.send([{ name: "quick_reply", display_text: "Inactive users", id: "inactive" }], { body: "", footer: "\n*JARVIS-MD*", title: activeUsers.trim() }, "button");
+    return await message.client.sendButton(message.jid, { buttons:[{ name: "quick_reply", display_text: "Inactive users", id: "inactive" }], body: "", footer: "\n*JARVIS-MD*", title: activeUsers.trim() });
 });
 
 System({

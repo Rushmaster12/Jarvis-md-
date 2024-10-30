@@ -48,16 +48,17 @@ const gitPull = async (m) => {
     }
 }
 
-const getDeployments = async () => {
+async function getDeployments() {
     try {
-        const validStatus = new Set(['STOPPED', 'STOPPING', 'ERROR', 'ERRPRING']);
-        const response = await axios.get('https://app.koyeb.com/v1/deployments', axiosConfig);
-        const deploymentStatuses = response.data.deployments.map(deployment => deployment.status);
-        return deploymentStatuses.filter(status => !validStatus.has(status)).length > 1;
+        let response = await axios.get('https://app.koyeb.com/v1/apps', axiosConfig);
+        let result = response.data.apps.find(item => item.name === Config.KOYEB_APP_NAME)?.status;        
+        const validStatus = new Set(['STOPPED', 'STOPPING', 'ERROR', 'ERRORING']);
+        if (validStatus.has(result)) return true;     
+        return false;
     } catch (error) {
-        throw new Error("Error fetching deployments");
+        return true;
     }
-}
+};
 
 const redeploy = async () => {
     try {

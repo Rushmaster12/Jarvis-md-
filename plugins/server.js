@@ -9,11 +9,11 @@ Jarvis - Loki-Xer
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-const { System, isPrivate, sleep, shell, version, changeVar, setData } = require("../lib/");
-const Config = require("../config");
+const { gitPull, getDeployments, redeploy, updateBot, setVar, changeEnv, herokuRestart } = require("./client/");
+const { System, isPrivate, sleep, shell, changeVar, setData, config: Config } = require("../lib/");
+const { version } = require('../package.json');
 const simpleGit = require("simple-git");
 const git = simpleGit();
-const { gitPull, getDeployments, redeploy, updateBot, setVar, changeEnv, herokuRestart } = require("./client/");
 
 System({
     pattern: "shutdown",

@@ -16,10 +16,13 @@ const {
     postJson,
     isPrivate,
     interactWithAi,
-    GraphOrg,
-    readMore
+    makeUrl
 } = require("../lib/");
 
+async function readMore() {
+  const readmore = String.fromCharCode(8206).repeat(4001);
+  return readmore;
+};
 
 System({
     pattern: "thinkany", 
@@ -161,12 +164,12 @@ System({
 	type: 'ai',
 }, async (message, match) => {
     if(!message.reply_message.image) return await message.reply("_Reply to a image_");
-    const data = await GraphOrg(await message.reply_message.downloadAndSaveMedia());
+    const data = await makeUrl(await message.reply_message.downloadAndSaveMedia());
     const res = await fetch(IronMan(`ironman/ai/ocr?url=${data}`));
     if (res.status !== 200) return await message.reply('*Error*');
-    const ress = await res.json();
-    if (!ress.text) return await message.reply('*Not found*');
-    await message.reply(`\`\`\`${ress.text}\`\`\``);
+    const text = await res.json()
+    if (!text.text) return await message.reply('*Not found*');
+    await message.reply(`\`\`\`${text.text}\`\`\``);
 });
 
 System({

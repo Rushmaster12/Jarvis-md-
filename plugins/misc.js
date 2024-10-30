@@ -17,10 +17,8 @@ const {
     getJson,
     postJson,
     isPrivate,
-    ssweb,
-    extractUrlFromMessage
+    extractUrlsFromText
   } = require("../lib/");
-  const axios = require("axios");
   
   
   System({
@@ -36,15 +34,14 @@ const {
 
   System({
   pattern: 'ss ?(.*)',
-  fromMe: isPrivate,
+  fromMe: true,
   desc: 'Takes a screenshot of a website',
   type: 'misc',
 }, async (message, match, m) => {
-  if (!match) return await message.reply(`*Please provide a URL*`);
-  const url = match;
-  const response = await ssweb(url);
-  const screenshotUrl = response.iurl; 
-  await m.sendFromUrl(screenshotUrl, { quoted: message.data, caption: `*Screenshot of ${url}*` });
+  let url = (await extractUrlsFromText(match || message.reply_message.text))[0];
+  if (!url) return await message.reply(`*Please provide a URL*`);
+  if (!isUrl(url)) return await message.reply(`*Please provide a valid URL*`);
+  await message.sendFromUrl(api + "tools/ssweb?q=" + url, { caption: `*Screenshot of ${url}*` });
 });
 
   System({
@@ -57,8 +54,7 @@ const {
      await message.client.forwardMessage(message.user.jid, message.reply_message.message);
   });
   
- 
-  
+   
   System({
       pattern: "attp",
       fromMe: isPrivate,
@@ -68,36 +64,26 @@ const {
      match = match || message.reply_message && message.reply_message.text 
      if (!match) return await message.reply("_Give me some text_");       
         await message.send("_making text into attp, it may take up to 1 minute_");
-        const buff = await LokiXer(`attp?text=${encodeURIComponent(match)}`);
         const stickerPackNameParts = config.STICKER_PACKNAME.split(";");
         const packname = stickerPackNameParts[0];
         const author = stickerPackNameParts[1];
-        await message.send(buff, { packname, author }, "sticker");
+        await message.send(config.BASE_URL + `api/attp?text=${encodeURIComponent(match)}`, { packname, author }, "sticker");
   });
   
- 
-  
+   
   System({
       pattern: 'whois ?(.*)',
       fromMe: isPrivate,
       desc: 'to find how is',
       type: "info",
   }, async (message, match) => {
-     let pp;
      let status;
      let user = message.quoted ? message.reply_message.sender : match.replace(/[^0-9]/g, '')+'@s.whatsapp.net'
      if (!user) return message.reply('_Reply to someone/mention_\n*Example:* . whois @user');
-     try { pp = await message.client.profilePictureUrl(user, 'image'); } catch { pp = 'https://graph.org/file/924bcf22ea2aab5208489.jpg'; }
      try { status = await message.client.fetchStatus(user); } catch { status = 'private'; }
+      let pp = await message.getPP(user);
       const date = new Date(status.setAt);
-      const options = {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric',
-        second: 'numeric'
-      }; 
+      const options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }; 
       let wm = 'https://wa.me/' + user.split('@')[0];
       const setAt = date.toLocaleString('en-US', options);
       const NaMe = await message.store.getName(user);
@@ -110,16 +96,21 @@ const {
       desc: 'It converts text to sound.',
       type: 'converter'
   }, async (message, match) => {
-      if (!(match || message.quoted.text)) return await message.reply('_Need Text!_\n_Example: tts Hello_\n_tts Hello {en}_');
+      if (!(match || message.reply_message.text)) return await message.reply('_Need Text!_\n_Example: tts Hello_\n_tts Hello {en}_');
       let LANG = config.LANG.toLowerCase();
       const lang = match.match("\\{([a-z]+)\\}");
       if (lang) {
         match = match.replace(lang[0], '');
         LANG = lang[1];
-        if (message.quoted.text) match = message.reply_message.text;
+        if (message.reply_message.text) match = message.reply_message.text;
       }
-      const { data } = await axios.post('https://api-loki-ser-1o2h.onrender.com/google/tts', { text: match, lang: LANG}, { responseType: 'arraybuffer' })
-      await message.reply(data, { mimetype: 'audio/ogg; codecs=opus', ptt: true }, "audio");
+      const response = await fetch(config.BASE_URL + 'google/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: match, lang: LANG }) });
+      if (response.ok) {
+          const data = await response.arrayBuffer();
+          await message.reply(Buffer.from(data), { mimetype: 'audio/ogg; codecs=opus', ptt: true }, "audio");
+      } else {
+          await message.reply("Error:", response.status, response.statusText);
+      }
   });
   
   
@@ -132,16 +123,14 @@ const {
       if (!message.body.includes('@') || !message.body.includes('‣')) return;
       if (message.body.includes("1")) {
           const text = message.body.split(" ");
-          const data = await postJson(config.API + "scraper/checkmail", { email: text[2] });
+          const data = await postJson(config.BASE_URL + "scraper/checkmail", { email: text[2] });
       if (data.tempmail.length === 0) return message.reply("_*Mail box is empty*_");
           const formattedResponse = `\n  *Temp Mail ✉️*\n\n${data.tempmail.map((mail, index) => `\n  • *From :* ${mail.from}\n  • *Subject :* ${mail.subject}\n  • *Date :* ${mail.date}\n  • *Id :* ${mail.id}\n  • *Mail Number:* ${index + 1}`).join("\n\n")}`;
           await message.send(formattedResponse);
       } else if (message.body.includes("2")) {
-         const { tempmail } = await getJson("https://api.lokiser.xyz/scraper/tempmail");
+         const { tempmail } = await getJson(config.BASE_URL + "scraper/tempmail");
          const user = await message.store.getName(message.sender);
-         const data = await postJson(config.API + "scraper/checkmail", { email: tempmail });
+         const data = await postJson(config.BASE_URL + "scraper/checkmail", { email: tempmail });
          await message.send(`*_${tempmail}_*\n\n*Dear user, this is your temp mail*\n\n*User: ${user}*\n*Mail received: ${data.tempmail.length}*\n\n\`\`\`1 ‣\`\`\` *Check mail*\n\`\`\`2 ‣\`\`\` *Next mail*\n\n*_Send a Number as reply_*`);
       }
   });
-
-  System({ pattern: "mee", fromMe: true, desc: "self mention", type: "user", }, async (message, match) => { await message.client.sendMessage(message.chat, { text: `@${message.sender.split("@")[0]}`, mentions: [message.sender] }) });

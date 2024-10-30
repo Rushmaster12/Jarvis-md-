@@ -48,7 +48,7 @@ jarvis md is Multi Device whatsapp bot
 1. If You don't have a account in panel create it . 
 2. How to deploy in panel?
     <br>
-<a href='https://gist.github.com/IRON-M4N/f516e849f9ad569f9fdd3e5013cff0fd' target="_blank"><img alt='PANEL' src='https://img.shields.io/badge/PANEL-100000?style=for-the-badge&logo=pterodactyl&logoColor=white&labelColor=black&color=black&logoSize=auto'/></a>
+<a href='https://gist.github.com/IRON-M4N/83eff774cdc2cf7ed01e6f1f12786ecb' target="_blank"><img alt='PANEL' src='https://img.shields.io/badge/PANEL-100000?style=for-the-badge&logo=pterodactyl&logoColor=white&labelColor=black&color=black&logoSize=auto'/></a>
 
 #### DEPLOY TO RENDER 
 
